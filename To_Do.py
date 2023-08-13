@@ -14,6 +14,10 @@ class App(ctk.CTk):
         ctk.set_appearance_mode('Dark')
         ctk.set_default_color_theme('dark-blue')
 
+        self.today = dt.datetime.today()
+        self.formatted_date = self.today.strftime('%A the %d' + ('th' if 4 <= self.today.day <= 20 or 24 <= self.today.day <= 30 else {
+            1: 'st', 2: 'nd', 3: 'rd'}.get(self.today.day % 10, 'th')) + ' of %B %Y')
+
         # Center window on open
         self.center_window(900, 550, y_offset=200)
 
@@ -55,9 +59,9 @@ class App(ctk.CTk):
         self.main_frame.grid_rowconfigure(0, weight=1)
 
         # Configure grid positions
-        self.app_frame.grid(row=1, column=2)
-        self.menu_frame.grid(row=1, column=0, padx=40, sticky='nsew')
-        self.right_frame.grid(row=1, column=3, padx=40, sticky='nsew')
+        self.app_frame.grid(row=2, column=2)
+        self.menu_frame.grid(row=2, column=0, padx=40, sticky='nsew')
+        self.right_frame.grid(row=2, column=3, padx=40, sticky='nsew')
 
     def initialize_ui(self):
         # Create UI elements
@@ -83,7 +87,7 @@ class App(ctk.CTk):
             self.menu_frame, text='New Day / Clear All', command=self.clear_tasks)
         new_day_button.grid(row=1, column=0, pady=(10, 10))
         collect_left_tasks = ctk.CTkButton(
-            self.menu_frame, text='Save TODAY', command=self.snapshot
+            self.menu_frame, text='Save', command=self.snapshot
         )
         collect_left_tasks.grid(row=2, column=0, pady=(10, 20))
 
@@ -92,6 +96,10 @@ class App(ctk.CTk):
         self.title_label = ctk.CTkLabel(
             self.main_frame, text=f'Daily Goals', font=ctk.CTkFont(size=50, weight='bold'))
         self.title_label.grid(row=0, column=1, columnspan=2, pady=(10, 20))
+
+        self.subtitle = ctk.CTkLabel(
+            self.main_frame, text=self.formatted_date, font=ctk.CTkFont(size=14))
+        self.subtitle.grid(row=1, column=1, columnspan=2)
 
     def create_stats_labels(self):
         # Create labels for task statistics
@@ -124,8 +132,8 @@ class App(ctk.CTk):
             self.main_frame, text='ADD', width=150, command=self.add_task)
         add_button.grid(row=6, column=2, padx=10, pady=10)
         save_as_button = ctk.CTkButton(
-            self.main_frame, text='Save As...', width=150, command=self.save_snapshot_as)
-        save_as_button.grid(row=7, column=2, padx=10, pady=10)
+            self.menu_frame, text='Save As...', width=150, command=self.save_snapshot_as)
+        save_as_button.grid(row=3, column=0)
 
     # Creates checkbox for task entry widget
 
@@ -175,7 +183,7 @@ class App(ctk.CTk):
     def _update_task_labels(self):
         # Update statistics labels
         self.tasks_label.configure(
-            text=f'To-Do\n {self.total_todo}', font=ctk.CTkFont(size=12, weight='bold'))
+            text=f'To-Do\n {self.total_todo}\n', font=ctk.CTkFont(size=12, weight='bold'))
         self.completed_label.configure(
             text=f'Completed\n {self.total_complete}', font=ctk.CTkFont(size=12, weight='bold'))
 
@@ -233,24 +241,28 @@ class App(ctk.CTk):
         current_date = dt.datetime.now()
         formatted_date = current_date.strftime('%A %d-%m-%Y')
         filename = f'{formatted_date}.json'
+
+        script_dir = os.path.dirname(__file__)
+        archived_dir = os.path.join(script_dir, 'archived')
+        filename_path = os.path.join(archived_dir, filename)
+
         tasks = []
         for widget in self.left_scrollable_frame.winfo_children():
             if isinstance(widget, ctk.CTkCheckBox):
                 task_text = widget.cget('text')
                 completed = widget.get()
                 tasks.append({"task": task_text, "completed": completed})
-        script_dir = os.path.dirname(__file__)
-        archived_dir = os.path.join(script_dir, 'archived')
-        if not os.path.exists(archived_dir):
-            os.makedirs(archived_dir)
-        filename = os.path.join(archived_dir, filename)
-        if os.path.exists(filename):
-            with open(filename, 'r') as f:
-                existing_tasks = json.load(f)
-                tasks.extend(existing_tasks)
-        with open(filename, 'w') as f:
-            json.dump(tasks, f, indent=4)
-        print(f'Data saved to {filename}')
+
+        if os.path.exists(filename_path):
+            with open(filename_path, 'w') as f:
+                json.dump(tasks, f, indent=4)
+            print(f'Data saved to {filename_path}')
+        else:
+            if not os.path.exists(archived_dir):
+                os.makedirs(archived_dir)
+            with open(filename_path, 'w') as f:
+                json.dump(tasks, f, indent=4)
+            print(f'New data saved to {filename_path}')
 
     def save_snapshot_as(self):
         current_date = dt.datetime.now()
